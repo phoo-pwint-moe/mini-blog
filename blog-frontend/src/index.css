@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@import "swiper/css";
+@import "swiper/css/navigation";
+@import "swiper/css/pagination";
+
+
+/* optional reset */
+body {
+  @apply bg-gray-100 text-gray-900;
+}
