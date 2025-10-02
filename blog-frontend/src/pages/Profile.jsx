@@ -6,6 +6,7 @@ function Profile() {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const [user, setUser] = useState({ id: "", name: "" });
+  const [loading, setLoading] = useState();
   
 
     const fetchData = async () => {

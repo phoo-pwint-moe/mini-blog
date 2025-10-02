@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FaUserCircle } from "react-icons/fa";
+import { FaUserCircle, FaThumbsDown, FaThumbsUp, FaRegThumbsDown, FaRegThumbsUp } from "react-icons/fa";
 import ImageUploading from "react-images-uploading";
 import { FaPlus } from "react-icons/fa";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination, Autoplay } from "swiper/modules";
-import api from '../api';
+import api from "../api";
+import { io, Socket } from "socket.io-client";
+const socket = io("http://localhost:4000");
 
 function DetailPage() {
   const { id } = useParams();
@@ -67,14 +69,10 @@ function DetailPage() {
       .map((img) => img.data_url);
     formData.append("existingImages", JSON.stringify(existingImages));
 
-  
-    
-
     // New images
     images.forEach((img) => {
       if (img.file) formData.append("images", img.file);
     });
-
 
     try {
       await api.put(`/blogs/${id}`, formData);
@@ -97,8 +95,48 @@ function DetailPage() {
     }
   };
 
+  useEffect(() => {
+     socket.emit("join_blog", id);
+
+     // 3️⃣ Listen for updates
+     const handleUpdateLikes = ({
+       blogId,
+       likes,
+       dislikes,
+       likedBy,
+       dislikedBy,
+     }) => {
+       if (blogId === id) {
+         setBlog((prev) => ({
+           ...prev,
+           likes,
+           dislikes,
+           likedBy,
+           dislikedBy,
+         }));
+       }
+     };
+
+     socket.on("update_likes", handleUpdateLikes);
+
+     // 4️⃣ Leave room on unmount
+     return () => {
+       socket.emit("leave_blog", id);
+       socket.off("update_likes", handleUpdateLikes);
+     };;
+  }, [id]);
+
+  const handleLike = (blog) =>
+    socket.emit("like_blog", { blogId: blog._id, currentUserId });
+  const handleDislike = (blog) =>
+    socket.emit("dislike_blog", { blogId: blog._id, currentUserId });
+
   if (loading)
-    return <p className="p-6 flex item-center justify-center text-gray-500">Loading blog...</p>;
+    return (
+      <p className="p-6 flex item-center justify-center text-gray-500">
+        Loading blog...
+      </p>
+    );
   if (!blog) return null;
 
   return (
@@ -215,7 +253,50 @@ function DetailPage() {
           </div>
         </div>
       )}
+      {/* Like/Dislike buttons */}
+      <div className="flex gap-4 text-center my-3">
+        {/* Like button */}
+        <button
+          onClick={() => handleLike(blog)}
+          className="flex items-center gap-1 px-3 py-1 rounded-full font-semibold transition-all duration-200 scale-80"
+        >
+          {blog.likedBy?.includes(currentUserId) ? (
+            <FaThumbsUp className="w-5 h-5 text-blue-600 transition-transform duration-200 scale-110" />
+          ) : (
+            <FaRegThumbsUp className="w-5 h-5 text-gray-500 hover:text-blue-600 transition-transform duration-200 hover:scale-110" />
+          )}
+          <span
+            className={
+              blog.likedBy?.includes(currentUserId)
+                ? "text-blue-600"
+                : "text-gray-700"
+            }
+          >
+            {blog.likedBy.length}
+          </span>
+        </button>
 
+        {/* Dislike button */}
+        <button
+          onClick={() => handleDislike(blog)}
+          className="flex items-center gap-1 px-3 py-1 rounded-full font-semibold transition-all duration-200 scale-80"
+        >
+          {blog.dislikedBy?.includes(currentUserId) ? (
+            <FaThumbsDown className="w-5 h-5 text-red-600 transition-transform duration-200 scale-110" />
+          ) : (
+            <FaRegThumbsDown className="w-5 h-5 text-gray-500 hover:text-red-600 transition-transform duration-200 hover:scale-110" />
+          )}
+          <span
+            className={
+              blog.dislikedBy?.includes(currentUserId)
+                ? "text-red-600"
+                : "text-gray-700"
+            }
+          >
+            {blog.dislikedBy.length}
+          </span>
+        </button>
+      </div>
       {/* update and delete modal  */}
       <div className="flex gap-3  items-center">
         {blog.userId?._id === currentUserId && (

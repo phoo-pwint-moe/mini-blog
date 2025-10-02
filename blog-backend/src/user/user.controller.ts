@@ -26,7 +26,7 @@ export class UserController {
   @Get('profile')
   getProfile(@Request() req) {
     return {
-      userId: req.user.userId,
+        userId: req.user.userId,
         username: req.user.username,
       };
     }

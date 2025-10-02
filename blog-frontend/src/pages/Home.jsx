@@ -1,13 +1,25 @@
 import { useEffect, useState } from "react";
-import api from "../api"
+import api from "../api";
 import { HiTrash } from "react-icons/hi";
-import { FaUserCircle } from "react-icons/fa";
+import {
+  FaUserCircle,
+  FaRegThumbsUp,
+  FaThumbsUp,
+  FaRegThumbsDown,
+  FaThumbsDown,
+} from "react-icons/fa";
 import { FaPlus } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import ImageUploading from "react-images-uploading";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination, Autoplay } from "swiper/modules";
+const currentUserId = localStorage.getItem("userId");
+
+import { io, Socket } from "socket.io-client";
+const socket = io("http://localhost:4000", {
+  auth:{ currentUserId }
+});
 
 function Home() {
   const navigate = useNavigate();
@@ -20,29 +32,35 @@ function Home() {
   const maxNumber = 5;
   const [selectedBlog, setSelectedBlog] = useState(null);
   const [showImgModal, setShowImgModal] = useState(false);
-   const [startIndex, setStartIndex] = useState(0);
+   const [showNotification, setShowNotification] = useState(false);
+   const [notificationMessage, setNotificationMessage] = useState("");
+  const [startIndex, setStartIndex] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
 
   const token = localStorage.getItem("token");
 
-  const currentUserId = localStorage.getItem("userId");
+  
 
   const openModal = (blog, index) => {
-      setSelectedBlog(blog);   
-      setStartIndex(index);
-      setShowImgModal(true);
-    };
+    setSelectedBlog(blog);
+    setStartIndex(index);
+    setShowImgModal(true);
+  };
   useEffect(() => {
     const fetchBlogs = async () => {
       setLoading(true);
-      
+
       try {
-        const response = await api.post("/blogs/get", { userId: currentUserId });
-        const sorted = response.data.sort(
-          (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
-        );
+        const response = await api.post(`/blogs/get/${currentUserId}`);
+        const sorted = response.data
+          .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+          .map((blog) => ({
+            ...blog,
+            likes: blog.likedBy.length,
+            dislikes: blog.dislikedBy.length,
+          }));
         setBlogs(sorted);
         console.log(sorted);
       } catch (err) {
@@ -53,6 +71,29 @@ function Home() {
     };
     fetchBlogs();
   }, [token]);
+
+
+  useEffect(() => {
+    socket.on("new_blog", ({ blog, notification }) => {
+      console.log(blog);
+      
+
+      if (blog.userId._id !== currentUserId) {
+       setBlogs((prev) => [blog, ...prev]); 
+       setNotificationMessage(notification);
+       setShowNotification(true);
+
+       setTimeout(() => {
+         setShowNotification(false);
+       }, 5000);
+       }
+     
+    });
+
+    return () => {
+      socket.off("new_blog");
+    };
+  }, []);
 
   const truncateWords = (text, wordLimit = 10) => {
     const words = text.split(" ");
@@ -77,17 +118,17 @@ function Home() {
     formData.append("userId", currentUserId);
 
     images.forEach((img) => {
-        if (img.file) formData.append("images", img.file);
+      if (img.file) formData.append("images", img.file);
     });
     try {
       const response = await api.post("/blogs", formData);
-      
+
       console.log(response.data);
-      
+
       // Add new blog to list
       setBlogs([response.data, ...blogs]);
       console.log(blogs);
-      
+
       setTitle("");
       setContent("");
       setImages([]);
@@ -111,6 +152,28 @@ function Home() {
       setError(err.response?.data?.message || "Failed to delete blog");
     }
   };
+
+  useEffect(() => {
+    socket.on(
+      "update_likes",
+      ({ blogId, likes, dislikes, likedBy, dislikedBy }) => {
+        setBlogs((prev) =>
+          prev.map((blog) =>
+            blog._id === blogId
+              ? { ...blog, likes, dislikes, likedBy, dislikedBy }
+              : blog
+          )
+        );
+      }
+    );
+    return () => socket.off("update_likes");
+  }, []);
+
+  const handleLike = (blog) =>
+    socket.emit("like_blog", { blogId: blog._id, currentUserId });
+  const handleDislike = (blog) =>
+    socket.emit("dislike_blog", { blogId: blog._id, currentUserId });
+
   return (
     <div className="min-h-screen bg-gray-50 p-8 relative">
       <div className="max-w-2xl mx-auto">
@@ -234,6 +297,21 @@ function Home() {
               </div>
             </div>
           )}
+          {showNotification && (
+              <div className="fixed top-5 left-1/2 transform -translate-x-1/2 z-50">
+            <div className="bg-indigo-600 text-white px-6 py-3 rounded shadow-lg font-medium animate-slide-down">
+             {notificationMessage}
+                   <button
+                className="ml-3 font-bold"
+                onClick={() => setShowNotification(false)}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+          )}
+
+        
         </div>
         {loading ? (
           <p className="text-gray-600">Loading blogs...</p>
@@ -301,6 +379,51 @@ function Home() {
                         )}
                       </div>
                     ))}
+                </div>
+
+                {/* Like/Dislike buttons */}
+                <div className="flex gap-4 text-center my-3">
+                  {/* Like button */}
+                  <button
+                    onClick={() => handleLike(blog)}
+                    className="flex items-center gap-1 px-3 py-1 rounded-full font-semibold transition-all duration-200 scale-80"
+                  >
+                    {blog.likedBy?.includes(currentUserId) ? (
+                      <FaThumbsUp className="w-5 h-5 text-blue-600 transition-transform duration-200 scale-110" />
+                    ) : (
+                      <FaRegThumbsUp className="w-5 h-5 text-gray-500 hover:text-blue-600 transition-transform duration-200 hover:scale-110" />
+                    )}
+                    <span
+                      className={
+                        blog.likedBy?.includes(currentUserId)
+                          ? "text-blue-600"
+                          : "text-gray-700"
+                      }
+                    >
+                      {blog.likes}
+                    </span>
+                  </button>
+
+                  {/* Dislike button */}
+                  <button
+                    onClick={() => handleDislike(blog)}
+                    className="flex items-center gap-1 px-3 py-1 rounded-full font-semibold transition-all duration-200 scale-80"
+                  >
+                    {blog.dislikedBy?.includes(currentUserId) ? (
+                      <FaThumbsDown className="w-5 h-5 text-red-600 transition-transform duration-200 scale-110" />
+                    ) : (
+                      <FaRegThumbsDown className="w-5 h-5 text-gray-500 hover:text-red-600 transition-transform duration-200 hover:scale-110" />
+                    )}
+                    <span
+                      className={
+                        blog.dislikedBy?.includes(currentUserId)
+                          ? "text-red-600"
+                          : "text-gray-700"
+                      }
+                    >
+                      {blog.dislikes}
+                    </span>
+                  </button>
                 </div>
 
                 {blog.userId?._id === currentUserId && (
