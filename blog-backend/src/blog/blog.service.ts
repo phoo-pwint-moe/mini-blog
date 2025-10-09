@@ -6,8 +6,6 @@ import { CreateBlogDto } from './dto/create-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { BadRequestException } from '@nestjs/common'; 
-import { Express } from 'express';
-import { log } from 'console';
 
 @Injectable()
 export class BlogService {
@@ -130,8 +128,9 @@ export class BlogService {
     // Update other fields
     blog.title = dto.title;
     blog.content = dto.content;
-
-    return blog.save();
+    await blog.save();
+    const populate = await blog.populate('userId', 'username')
+    return populate;
   }
 
   async remove(id: string, userId: string): Promise<any> {
