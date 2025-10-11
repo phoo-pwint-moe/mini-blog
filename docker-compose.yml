@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   backend:
     build:
@@ -10,14 +12,36 @@ services:
       - /app/node_modules
     environment:
       NODE_ENV: development
+      MONGO_URI: mongodb://mongo:27017/blog
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - blog-network
 
-  frontend:
-    build:
-      context: ./blog-frontend
-    container_name: blog-frontend
+  redis:
+    image: redis:7
+    container_name: redis
+    networks:
+      - blog-network
+
+  mongo:
+    image: mongo:6.0
+    container_name: mongo
     ports:
-      - "5173:5173"
+      - "27018:27017"  # external host port is 27018, internal is 27017
     volumes:
-      - ./blog-frontend:/app
-      - /app/node_modules
+      - mongo-data:/data/db
+    networks:
+      - blog-network
+
+volumes:
+  mongo-data:
+
+networks:
+  blog-network:
+    driver: bridge
+
 

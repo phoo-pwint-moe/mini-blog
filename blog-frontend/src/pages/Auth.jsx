@@ -27,6 +27,8 @@ function Auth() {
         localStorage.setItem("auth", "true");
       }
       navigate("/"); // redirect to Home
+      window.location.reload();
+
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     }

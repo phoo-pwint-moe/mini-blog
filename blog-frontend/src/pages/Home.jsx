@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import BlogCard from "../components/blogs/BlogCard";
+import BlogList from "../components/blogs/BlogList";
 import BlogCreateModal from "../components/blogs/BlogCreateModal";
 import BlogUpdateModal from "../components/blogs/BlogUpdateModal";
 import BlogDeleteModal from "../components/blogs/BlogDeleteModal";
@@ -31,6 +31,7 @@ function Home() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
+  
   const isExpired = tokenExpire(token);
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState("");
@@ -40,10 +41,6 @@ function Home() {
     showUpdateModal,
     showDeleteModal,
   } = useSelector((s) => s.blogs);
-
-    useEffect(() => {
-      dispatch(fetchBlogs());
-    }, [dispatch]);
 
   useEffect(() => {
     if (!socket) return;
@@ -62,24 +59,6 @@ function Home() {
   }, [socket, currentUserId, dispatch]);
   
   
-    useEffect(() => {
-      socket.on(
-        "update_likes",
-        ({ blogId, likes, dislikes, likedBy, dislikedBy }) => {
-          dispatch(
-            updateLikes({
-              blogId,
-              likes,
-              dislikes,
-              likedBy,
-              dislikedBy,
-            })
-          );
-        }
-      );
-
-      return () => socket.off("update_likes");
-    }, [dispatch]);
   const openModal = (blog, index) => {
     // handle image modal if needed
   };
@@ -147,16 +126,7 @@ function Home() {
             </button>
           )}
         </div>
-        <div className="grid grid-cols-1 gap-2 mb-5 justify-items-center">
-          {blogs.map((blog) => (
-            <BlogCard
-              key={blog._id}
-              blog={blog}
-              openModal={openModal}
-              socket={socket}
-            />
-          ))}
-        </div>
+        <BlogList/>
 
         {showCreateModal && <BlogCreateModal />}
         {showUpdateModal && <BlogUpdateModal />}

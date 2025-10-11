@@ -15,11 +15,13 @@ import {
   setUpdateBlog,
 } from "./blogSlice";
 
+
 const currentUserId = localStorage.getItem("userId");
+
 
 function BlogCard({ blog, openModal, socket }) {
   const dispatch = useDispatch();
-
+  
   const truncateWords = (text, wordLimit = 10) => {
     const words = text.split(" ");
     if (words.length <= wordLimit) return text;

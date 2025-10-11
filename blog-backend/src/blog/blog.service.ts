@@ -1,23 +1,37 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Blog, BlogDocument } from './blog.schema';
 import { CreateBlogDto } from './dto/create-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
-import { BadRequestException } from '@nestjs/common'; 
+import { BadRequestException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 
 @Injectable()
 export class BlogService {
-  constructor(@InjectModel(Blog.name) private blogModel: Model<BlogDocument>) {}
+  constructor(
+    @InjectModel(Blog.name) private blogModel: Model<BlogDocument>,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+  ) {}
 
   async findAll(): Promise<Blog[]> {
+    const cache = await this.cacheManager.get<Blog[]>('blogs');
+    if (cache) return cache;
     const blogs = await this.blogModel.find().populate('userId', 'username');
+    await this.cacheManager.set('blogs', blogs, 60);
     return blogs;
   }
 
   async findOne(id: string): Promise<Blog | null> {
-    return this.blogModel.findById(id).populate('userId', 'username');
+    const cache = await this.cacheManager.get<Blog>(`blog_${id}`);
+    if (cache) return cache;
+    const blog = await this.blogModel
+      .findById(id)
+      .populate('userId', 'username');
+    await this.cacheManager.set(`blog_$(id)`, blog, 60);
+    return blog;
   }
 
   async create(dto: CreateBlogDto, userId: string, files: string[]) {
@@ -27,6 +41,7 @@ export class BlogService {
       images: files,
     });
     const save = await newBlog.save();
+    await this.cacheManager.del('blog');
     return save.populate('userId', 'username');
   }
   async toggleLike(blogId: string, userId: string) {
@@ -37,13 +52,15 @@ export class BlogService {
     const dislikedIndex = blog.dislikedBy.indexOf(userId);
 
     if (likedIndex > -1) {
-      blog.likedBy.splice(likedIndex, 1); 
+      blog.likedBy.splice(likedIndex, 1);
     } else {
       blog.likedBy.push(userId);
-      if (dislikedIndex > -1) blog.dislikedBy.splice(dislikedIndex, 1); 
+      if (dislikedIndex > -1) blog.dislikedBy.splice(dislikedIndex, 1);
     }
 
     await blog.save();
+    await this.cacheManager.del('blogs');
+    await this.cacheManager.del(`blog_${blogId}`);
     return {
       likes: blog.likedBy.length,
       dislikes: blog.dislikedBy.length,
@@ -67,6 +84,8 @@ export class BlogService {
     }
 
     await blog.save();
+    await this.cacheManager.del('blogs');
+    await this.cacheManager.del(`blog_${blogId}`);
     return {
       likes: blog.likedBy.length,
       dislikes: blog.dislikedBy.length,
@@ -129,7 +148,9 @@ export class BlogService {
     blog.title = dto.title;
     blog.content = dto.content;
     await blog.save();
-    const populate = await blog.populate('userId', 'username')
+    await this.cacheManager.del('blogs');
+    await this.cacheManager.del(`blog_$(id)`);
+    const populate = await blog.populate('userId', 'username');
     return populate;
   }
 
@@ -153,6 +174,8 @@ export class BlogService {
 
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     });
-    return this.blogModel.findByIdAndDelete(id).exec();
+    await this.blogModel.findByIdAndDelete(id).exec();
+    await this.cacheManager.del('blogs');
+    await this.cacheManager.del(`blog_$(id)`);
   }
 }

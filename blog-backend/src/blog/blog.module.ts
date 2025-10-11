@@ -8,6 +8,7 @@ import { BlogGateway } from './blog.gateway';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Blog.name, schema: BlogSchema }]),
+    
   ],
   controllers: [BlogController],
   providers: [BlogService, BlogGateway],

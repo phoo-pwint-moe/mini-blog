@@ -15,7 +15,8 @@ export class UserService {
       username: createUserDto.username,
       password: hashedPassword,
     });
-    return user.save();
+    await user.save();
+    return user;
   }
 
   async findByUsername(username: string): Promise<User | null> {
