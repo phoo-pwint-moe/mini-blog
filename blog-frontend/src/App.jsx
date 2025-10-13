@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Auth from "./pages/Auth";
 import Register from "./pages/Register";
+import Otp from "./pages/Otp"
 import Home from "./pages/Home";
 import DetailPage from "./pages/DetailPage";
 import Profile from "./pages/Profile"
@@ -14,6 +15,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Auth />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/otp" element={<Otp />} />
         <Route
           path="/detail/:id"
           element={

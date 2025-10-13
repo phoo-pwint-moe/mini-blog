@@ -6,6 +6,7 @@ import api from '../api';
 function Register() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setconfirmPassword] = useState("");
 
@@ -18,12 +19,15 @@ function Register() {
       setError("Passwords do not match");
       return;
     }
+    console.log(email);
+    
     setLoading(true);
     setError("");
     try {
       const response = await api.post(`/user/register`, {
         username,
         password,
+        email
       });
 
       if (response.data.message) {
@@ -67,6 +71,19 @@ function Register() {
             />
           </label>
 
+          <label className="block mt-6 text-sm font-medium text-gray-700">
+            Email
+            <input
+              type="email"
+              name="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-2 w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-400"
+              placeholder="Your Email"
+              aria-label="email"
+            />
+          </label>
           <label className="block mt-4 text-sm font-medium text-gray-700">
             Password
             <input

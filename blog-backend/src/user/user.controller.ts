@@ -16,9 +16,21 @@ export class UserController {
     const existingUser = await this.usersService.findByUsername(
       createUserDto.username,
     );
-    if (existingUser) return { message: 'Username already exists' };
+    const existingEmail = await this.usersService.findByEmail(
+      createUserDto.email,
+    );
+
+    console.log(createUserDto.email);
+    
+    
+    if (existingUser) {
+      return { message: 'Username already exists' };
+    } else if (existingEmail) {
+      return { message: 'Eamil already exists' };
+    };
 
     const user = await this.usersService.create(createUserDto);
+    return user;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -27,7 +39,7 @@ export class UserController {
   getProfile(@Request() req) {
     return {
         userId: req.user.userId,
-        username: req.user.username,
+      username: req.user.username
       };
     }
   }

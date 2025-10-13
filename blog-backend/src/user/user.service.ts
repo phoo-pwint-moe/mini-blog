@@ -14,6 +14,7 @@ export class UserService {
     const user = new this.userModel({
       username: createUserDto.username,
       password: hashedPassword,
+      email: createUserDto.email
     });
     await user.save();
     return user;
@@ -21,6 +22,10 @@ export class UserService {
 
   async findByUsername(username: string): Promise<User | null> {
     return this.userModel.findOne({ username }).exec();
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    return this.userModel.findOne({ email }).exec();
   }
 
   async validateUser(username: string, password: string): Promise<User | null> {

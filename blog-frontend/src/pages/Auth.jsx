@@ -18,16 +18,9 @@ function Auth() {
         password,
       });
 
-      const token = response.data.access_token;
-      localStorage.setItem("token", token);
-      const decoded = jwtDecode(token);
-      localStorage.setItem("userId", decoded.sub);
-      localStorage.setItem("username", decoded.username);
-      if (localStorage.getItem("token")) {
-        localStorage.setItem("auth", "true");
-      }
-      navigate("/"); // redirect to Home
-      window.location.reload();
+      const otpUserId = response.data.userId;
+      localStorage.setItem("otpUserId", otpUserId);
+      navigate("/otp"); // redirect to Home
 
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");

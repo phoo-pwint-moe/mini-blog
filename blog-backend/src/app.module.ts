@@ -4,10 +4,15 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { BlogModule } from './blog/blog.module';
+import { OtpModule } from './otp/otp.module';
+import { ConfigModule } from '@nestjs/config';
 import * as redisStore from 'cache-manager-ioredis';
 @Module({
   imports: [
-    MongooseModule.forRoot('mongodb://mongo:27017/blog'),
+    MongooseModule.forRoot('mongodb://localhost:27017/blog'),
+    ConfigModule.forRoot({
+      isGlobal: true, // so all modules can access it
+    }),
     CacheModule.register({
       isGlobal: true,
       store: redisStore,
@@ -18,6 +23,7 @@ import * as redisStore from 'cache-manager-ioredis';
     UserModule,
     AuthModule,
     BlogModule,
+    OtpModule,
   ],
 })
 export class AppModule {}
